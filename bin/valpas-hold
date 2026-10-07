@@ -1,0 +1,79 @@
+#!/bin/sh
+# valpas-keep-awake: one hook script for every event.
+#
+#   valpas-hold prompt     a prompt was submitted      -> hold now
+#   valpas-hold activity   a tool ran                  -> hold, at most once a minute
+#   valpas-hold stop       Claude finished its turn    -> hold now, then let it run out
+#   valpas-hold status     print what Valpas is doing  (for the /valpas command)
+#
+# Every hold asks Valpas to keep the Mac awake for at least VALPAS_GRACE
+# (default 20 minutes) from now, and never for less than it already would be.
+# So a session you started by hand is never cut short, and once Claude goes
+# quiet the Mac is free to sleep one grace window later, whatever happens to
+# the hooks. Nothing here can pin the Mac awake for longer than that.
+#
+# POSIX sh, no jq: the hook input on stdin is not needed, only the event.
+set -u
+
+GRACE="${VALPAS_GRACE:-20m}"
+THROTTLE="${VALPAS_THROTTLE_SECS:-60}"
+STATE_DIR="${TMPDIR:-/tmp}/valpas-keep-awake"
+STAMP="$STATE_DIR/last-hold"
+
+# The hook input is read and dropped so that Claude Code never blocks on a
+# full pipe. Nothing in it is needed.
+cat >/dev/null 2>&1 || true
+
+find_valpas() {
+    if [ -n "${VALPAS_BIN:-}" ] && [ -x "$VALPAS_BIN" ]; then printf '%s\n' "$VALPAS_BIN"; return 0; fi
+    if command -v valpas >/dev/null 2>&1; then command -v valpas; return 0; fi
+    for candidate in /opt/homebrew/bin/valpas /usr/local/bin/valpas "$HOME/.local/bin/valpas"; do
+        if [ -x "$candidate" ]; then printf '%s\n' "$candidate"; return 0; fi
+    done
+    return 1
+}
+
+VALPAS=$(find_valpas) || {
+    # No Valpas on this Mac: the hook stays silent and harmless. Said once,
+    # on the prompt event, where a person is actually looking.
+    if [ "${1:-}" = "prompt" ] || [ "${1:-}" = "status" ]; then
+        echo "valpas-keep-awake: the valpas command is not installed. Get Valpas from Homebrew (brew install --cask KirsuLab/tap/valpas) or Ko-fi; the Mac App Store build has no command line. https://kirsulab.com/macos/valpas" >&2
+    fi
+    exit 0
+}
+
+hold_now() {
+    # `hold` arrived in Valpas 1.3. An older app answers "don't know what" with
+    # exit 2; then the best safe thing is a plain timed session, and only when
+    # nothing is running, so a hand-set session is still never shortened.
+    if "$VALPAS" hold "$GRACE" >/dev/null 2>&1; then
+        :
+    elif [ $? -eq 2 ]; then
+        "$VALPAS" status >/dev/null 2>&1 || "$VALPAS" "$GRACE" >/dev/null 2>&1 || true
+    fi
+    mkdir -p "$STATE_DIR" 2>/dev/null && : > "$STAMP" 2>/dev/null || true
+}
+
+case "${1:-}" in
+    prompt|stop)
+        hold_now
+        ;;
+    activity)
+        # Tool calls come in bursts. One hold a minute is plenty for a grace
+        # window measured in tens of minutes, and keeps the hook invisible.
+        if [ -f "$STAMP" ]; then
+            now=$(date +%s)
+            then=$(stat -f %m "$STAMP" 2>/dev/null || echo 0)
+            [ $((now - then)) -lt "$THROTTLE" ] && exit 0
+        fi
+        hold_now
+        ;;
+    status)
+        "$VALPAS" status
+        ;;
+    *)
+        echo "usage: valpas-hold prompt|activity|stop|status" >&2
+        exit 2
+        ;;
+esac
+exit 0

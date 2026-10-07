@@ -1,0 +1,12 @@
+{
+  "name": "valpas-keep-awake",
+  "owner": { "name": "KirsuLab LLC", "url": "https://kirsulab.com" },
+  "metadata": { "description": "Single-plugin marketplace for valpas-keep-awake, the Valpas keep-awake plugin for Claude Code." },
+  "plugins": [
+    {
+      "name": "valpas-keep-awake",
+      "source": "./",
+      "description": "Keeps your Mac awake while Claude Code is working, through the Valpas menu bar app."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "valpas-keep-awake",
+  "displayName": "Valpas keep-awake",
+  "version": "1.0.0",
+  "description": "Keeps your Mac awake while Claude Code is working, through the Valpas menu bar app: a visible countdown, a battery guard, and with Valpas Pro the lid can be closed.",
+  "author": { "name": "KirsuLab LLC", "url": "https://kirsulab.com" },
+  "homepage": "https://kirsulab.com/macos/valpas/keep-mac-awake-for-ai-agents",
+  "repository": "https://github.com/KirsuLab/valpas-keep-awake",
+  "license": "MIT",
+  "keywords": ["macos", "sleep", "keep-awake", "caffeinate", "valpas"],
+  "hooks": "./hooks/hooks.json"
+}
