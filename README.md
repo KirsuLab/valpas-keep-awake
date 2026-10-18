@@ -35,7 +35,7 @@ Restart Claude Code so the hooks load. From then on every prompt holds the Mac a
 
 ## Settings
 
-Two environment variables, read where Claude Code runs:
+Three environment variables, read where Claude Code runs:
 
 | Variable | Default | Meaning |
 |---|---|---|
